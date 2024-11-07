@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Audiobook Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF to Audiobook Converter</h1>
+        <div class="upload-section">
+            <label for="pdfUpload" class="upload-label">Choose a PDF file to convert:</label>
+            <input type="file" id="pdfUpload" accept=".pdf">
+            <button onclick="uploadFile()">Upload & Convert</button>
+            <div id="outputMessage"></div>
+            <div id="progressContainer" style="display: none;">
+                <progress id="progressBar" value="0" max="100"></progress>
+                <span id="progressText">0%</span>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
