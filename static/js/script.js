@@ -16,7 +16,7 @@ function uploadFile() {
     formData.append('pdf', pdfFile); // Append the PDF file
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true); // Open the request
+    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true);
 
     xhr.upload.onprogress = function(event) {
         if (event.lengthComputable) {
