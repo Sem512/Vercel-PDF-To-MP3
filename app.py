@@ -25,33 +25,7 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
-    try:
-        if 'pdf' not in request.files:
-            print("No PDF file in request")  # Log the absence of 'pdf' key
-            return jsonify({"success": False, "message": "No file part"}), 400
-
-        pdf_file = request.files['pdf']
-        if pdf_file.filename == '':
-            print("Empty filename received")  # Log if filename is empty
-            return jsonify({"success": False, "message": "No selected file"}), 400
-
-        # Proceed with file processing
-        temp_pdf_path = os.path.join(temp_dir, pdf_file.filename)
-        pdf_file.save(temp_pdf_path)
-
-        pdf_text = extract_text_from_pdf(temp_pdf_path)
-        if not pdf_text.strip():
-            return jsonify({"success": False, "message": "PDF extraction failed"}), 500
-
-        audio_path = convert_text_to_speech(pdf_text, pdf_file.filename)
-        os.remove(temp_pdf_path)
-
-        audio_url = url_for('download_file', filename=os.path.basename(audio_path))
-        return jsonify({"success": True, "audio_url": audio_url})
-
-    except Exception as e:
-        print(f"Exception: {e}")  # Log the actual exception
-        return jsonify({"success": False, "message": str(e)}), 500
+    return jsonify({"success": True, "message": "Upload route is working"}), 200
 
 
 def extract_text_from_pdf(pdf_path):
