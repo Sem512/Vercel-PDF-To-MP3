@@ -7,7 +7,7 @@ import os
 import time
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
 
 from gtts import gTTS
 from PyPDF2 import PdfReader
