@@ -6,13 +6,19 @@ import pyttsx3
 import os
 import time
 import tempfile
+import boto3
+
+# Initialize the Boto3 Polly client using environment variables
+polly_client = boto3.client(
+    'polly',
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_REGION')  # Ensure to set the correct AWS region
+)
 
 app = Flask(__name__)
 CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
 
-from gtts import gTTS
-from PyPDF2 import PdfReader
-import os
 
 app = Flask(__name__)
 
