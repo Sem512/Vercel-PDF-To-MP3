@@ -5,6 +5,7 @@ from PyPDF2 import PdfReader
 import pyttsx3
 import os
 import time
+import tempfile
 
 app = Flask(__name__)
 CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
@@ -23,9 +24,39 @@ os.makedirs(temp_dir, exist_ok=True)
 def index():
     return render_template('index.html')
 
+
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
-    return jsonify({"success": True, "message": "Upload route is working"}), 200
+    try:
+        if 'pdf' not in request.files:
+            return jsonify({"success": False, "message": "No file part"}), 400
+
+        pdf_file = request.files['pdf']
+        if pdf_file.filename == '':
+            return jsonify({"success": False, "message": "No selected file"}), 400
+
+        if pdf_file and pdf_file.filename.endswith('.pdf'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf_file:
+                temp_pdf_path = temp_pdf_file.name
+                pdf_file.save(temp_pdf_path)
+
+            # Process the file as before
+            pdf_text = extract_text_from_pdf(temp_pdf_path)
+            if not pdf_text.strip():
+                return jsonify({"success": False, "message": "PDF extraction failed"}), 500
+
+            audio_path = convert_text_to_speech(pdf_text, pdf_file.filename)
+            os.remove(temp_pdf_path)  # Clean up the temporary file
+
+            audio_url = url_for('download_file', filename=os.path.basename(audio_path))
+            return jsonify({"success": True, "audio_url": audio_url})
+
+        return jsonify({"success": False, "message": "Invalid file type"}), 400
+
+    except Exception as e:
+        print(f"Exception: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
 
 
 def extract_text_from_pdf(pdf_path):
