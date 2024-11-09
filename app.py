@@ -7,14 +7,21 @@ from PyPDF2 import PdfReader
 app = Flask(__name__)
 CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
 
-# Set up the Polly client and /tmp directory for file storage
+# Initialize the Polly client using environment variables
 polly_client = boto3.client(
     'polly',
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
     region_name=os.getenv('AWS_REGION')
 )
-temp_dir = "/tmp"  # Use Vercel's writable directory
+
+# Ensure the 'temp' directory exists
+temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
+os.makedirs(temp_dir, exist_ok=True)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
@@ -30,22 +37,21 @@ def upload_pdf():
             temp_pdf_path = os.path.join(temp_dir, pdf_file.filename)
             pdf_file.save(temp_pdf_path)
 
-            # Process PDF and convert to speech
             pdf_text = extract_text_from_pdf(temp_pdf_path)
             if not pdf_text.strip():
                 return jsonify({"success": False, "message": "PDF extraction failed"}), 500
 
             audio_path = convert_text_to_speech_with_polly(pdf_text, pdf_file.filename)
-            os.remove(temp_pdf_path)  # Clean up PDF after processing
+            os.remove(temp_pdf_path)
 
-            # Send the audio file URL
+            # Send back the audio file URL
             audio_url = url_for('download_file', filename=os.path.basename(audio_path))
             return jsonify({"success": True, "audio_url": audio_url})
 
         return jsonify({"success": False, "message": "Invalid file type"}), 400
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}")  # Log the error
         return jsonify({"success": False, "message": str(e)}), 500
 
 def extract_text_from_pdf(pdf_path):
@@ -56,22 +62,27 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text() or ""
         return text
     except Exception as e:
-        print(f"PDF extraction error: {e}")
+        print(f"PDF extraction error: {e}")  # Log the error
         raise RuntimeError("Error reading PDF: " + str(e))
 
 def convert_text_to_speech_with_polly(text, filename):
     try:
+        if not text.strip():
+            raise ValueError("Cannot convert empty text to speech.")
+
         response = polly_client.synthesize_speech(
             Text=text,
             OutputFormat='mp3',
-            VoiceId='Joanna'
+            VoiceId='Joanna'  # Customize the voice here as needed
         )
+
         audio_path = os.path.join(temp_dir, f"{filename}.mp3")
-        with open(audio_path, 'wb') as audio_file:
-            audio_file.write(response['AudioStream'].read())
+        with open(audio_path, 'wb') as file:
+            file.write(response['AudioStream'].read())
+        
         return audio_path
     except Exception as e:
-        print(f"TTS conversion error: {e}")
+        print(f"TTS conversion error: {e}")  # Log the error
         raise RuntimeError("Error converting text to speech: " + str(e))
 
 @app.route('/download/<filename>')
