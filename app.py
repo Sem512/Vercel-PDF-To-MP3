@@ -1,13 +1,14 @@
 import os
-import boto3
 import json
-from flask import Flask, request, jsonify,render_template
+import boto3
+import requests
+from flask import Flask, request, jsonify, render_template
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 
-# Initialize the API Gateway client
-api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod'  # Replace with your API Gateway endpoint
+# API Gateway URL (Lambda function endpoint via API Gateway)
+api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf'  # Replace with your API Gateway endpoint
 
 @app.route('/')
 def index():
@@ -33,11 +34,12 @@ def upload_pdf():
                 return jsonify({"success": False, "message": "PDF extraction failed"}), 500
 
             # Trigger AWS Lambda for text-to-speech conversion
-            response = trigger_lambda(pdf_text, pdf_file.filename)
+            lambda_response = trigger_lambda(pdf_text, pdf_file.filename)
 
-            # Return the audio file URL(s)
-            if response.get('statusCode') == 200:
-                return jsonify({"success": True, "audio_files": response.get('body')}), 200
+            # Check if the response from Lambda is successful
+            if lambda_response.get('statusCode') == 200:
+                audio_files = json.loads(lambda_response['body']).get('audio_url')
+                return jsonify({"success": True, "audio_files": audio_files}), 200
 
             return jsonify({"success": False, "message": "Error in Lambda processing"}), 500
 
@@ -47,6 +49,7 @@ def upload_pdf():
 
 
 def extract_text_from_pdf(pdf_path):
+    """Extracts text from the given PDF file using PyPDF2"""
     try:
         reader = PdfReader(pdf_path)
         text = ""
@@ -59,20 +62,31 @@ def extract_text_from_pdf(pdf_path):
 
 
 def trigger_lambda(text, filename):
-    # Send request to Lambda (API Gateway endpoint)
+    """Triggers the Lambda function via API Gateway"""
     payload = {
         'text': text,
         'filename': filename
     }
 
-    response = boto3.client('apigateway').test_invoke_method(
-        restApiId='ccvjmdt3th',  # Replace with your API ID
-        resourceId='/convert-pdf',  # Replace with your resource ID
-        httpMethod='POST',
-        body=json.dumps(payload)
-    )
+    headers = {
+        'Content-Type': 'application/json'
+    }
 
-    return json.loads(response['body'])
+    try:
+        # Send request to API Gateway (Lambda function)
+        response = requests.post(api_gateway_url, json=payload, headers=headers)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            return response.json()  # Return the response from Lambda as a JSON object
+        else:
+            print(f"Error from Lambda: {response.text}")
+            return {'statusCode': 500, 'body': json.dumps({'message': 'Lambda error'})}
+
+    except Exception as e:
+        print(f"Error triggering Lambda: {e}")
+        return {'statusCode': 500, 'body': json.dumps({'message': str(e)})}
+
 
 if __name__ == '__main__':
     app.run(debug=True)
