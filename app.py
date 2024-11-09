@@ -5,7 +5,7 @@ from flask_cors import CORS
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
+CORS(app)
 
 # Initialize the Polly client using environment variables
 polly_client = boto3.client(
