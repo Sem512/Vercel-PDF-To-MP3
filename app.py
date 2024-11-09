@@ -42,7 +42,11 @@ def upload_file():
         # Get the audio URL returned from Lambda
         audio_url = lambda_response.get('audio_url')
 
-        return jsonify({"success": True, "audio_url": audio_url})
+        return jsonify({
+            "success": True, 
+            "audio_url": audio_url,
+            "extracted_text": extracted_text  # Return the extracted text for further processing
+        })
 
     except Exception as e:
         logging.error(f"Error during file upload and processing: {str(e)}")

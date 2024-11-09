@@ -1,66 +1,50 @@
 function uploadFile() {
     const fileInput = document.getElementById('pdfUpload');
     const file = fileInput.files[0];
+    
+    // Create a FormData object to upload the file to Flask
     const formData = new FormData();
     formData.append('pdf', file);
 
-    // Send the file to Flask endpoint for text extraction
-    fetch('https://vercel-pdf-to-mp-3-delta.vercel.app/upload', {  // Replace with your Flask URL
+    // Send the file to the Flask server first
+    fetch('/upload', {  // Ensure this is the correct endpoint on your Flask app
         method: 'POST',
         body: formData,
     })
     .then(response => response.json())
     .then(data => {
-        // Log response from Flask (which includes extracted text and logs)
-        console.log("Flask Response: ", data);
-
         if (data.success) {
-            // Send the extracted text to Lambda for conversion to MP3
-            sendToLambda(data.extracted_text, data.filename);
+            // If the file was processed and audio URL is returned
+            const text = data.extracted_text;  // Ensure this is being sent by Flask in response
+            const filename = file.name;
+
+            // Now, send the text to Lambda for MP3 conversion
+            return fetch('https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    filename: filename
+                })
+            });
         } else {
-            document.getElementById('outputMessage').textContent = data.message || 'An error occurred during PDF processing.';
+            document.getElementById('outputMessage').textContent = data.message;
+            throw new Error(data.message);
         }
-    })
-    .catch(error => {
-        console.error('Error during PDF upload:', error);
-        document.getElementById('outputMessage').textContent = 'An error occurred during the upload.';
-    });
-}
-
-function sendToLambda(extractedText, filename) {
-    const lambdaRequestBody = JSON.stringify({
-        text: extractedText,
-        filename: filename
-    });
-
-    // Send extracted text to Lambda function for MP3 conversion
-    fetch('https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', {  // Replace with your Lambda URL
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: lambdaRequestBody
     })
     .then(response => response.json())
     .then(data => {
-        // Log Lambda response (includes MP3 URL and logs)
-        console.log("Lambda Response: ", data);
-
         if (data.audio_url) {
-            // Display the MP3 URL for download
+            // If Lambda returns a valid audio URL, display it
             document.getElementById('outputMessage').innerHTML = `<a href="${data.audio_url}" download>Download Audio</a>`;
+        } else {
+            throw new Error('No audio URL returned by Lambda');
         }
-
-        if (data.logs && data.logs.length > 0) {
-            // Optionally, log the Lambda logs to console or UI
-            data.logs.forEach(log => {
-                console.log(log);  // Print logs to the console
-            });
-        }
-
     })
     .catch(error => {
-        console.error('Error during MP3 conversion:', error);
-        document.getElementById('outputMessage').textContent = 'An error occurred during the MP3 conversion.';
+        console.error('Error:', error);
+        document.getElementById('outputMessage').textContent = 'An error occurred during the upload or conversion.';
     });
 }
