@@ -5,7 +5,7 @@ import boto3
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)  # Enable CORS globally with credentials support
+CORS(app)  # Enable CORS globally with credentials support
 
 # Set up the Polly client and /tmp directory for file storage
 polly_client = boto3.client(
