@@ -11,7 +11,7 @@ api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod'
 
 @app.route('/')
 def index():
-    return "Welcome to the PDF-to-Audio service"
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
