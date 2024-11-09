@@ -3,6 +3,7 @@ import json
 import requests
 from PyPDF2 import PdfReader
 from flask import Flask, request, jsonify, render_template
+import logging
 
 app = Flask(__name__)
 
