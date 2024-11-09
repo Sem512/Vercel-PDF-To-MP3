@@ -14,7 +14,8 @@ polly_client = boto3.client(
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
     region_name=os.getenv('AWS_REGION')
 )
-temp_dir = "/tmp"  # Use Vercel's writable directory
+
+temp_dir = "/tmp" 
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
