@@ -1,12 +1,13 @@
 import os
 import boto3
 import json
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-# Initialize the Lambda client
-lambda_client = boto3.client('lambda', region_name='eu-north-1')  # Make sure to set your region
+
+# Initialize the API Gateway client
+api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod'  # Replace with your API Gateway endpoint
 
 @app.route('/')
 def index():
@@ -36,13 +37,14 @@ def upload_pdf():
 
             # Return the audio file URL(s)
             if response.get('statusCode') == 200:
-                body = json.loads(response.get('body'))
-                return jsonify({"success": True, "audio_files": body.get('audio_files', [])})
+                return jsonify({"success": True, "audio_files": response.get('body')}), 200
 
             return jsonify({"success": False, "message": "Error in Lambda processing"}), 500
 
     except Exception as e:
+        print(f"Error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -52,25 +54,25 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text() or ""
         return text
     except Exception as e:
+        print(f"PDF extraction error: {e}")
         raise RuntimeError("Error reading PDF: " + str(e))
 
+
 def trigger_lambda(text, filename):
+    # Send request to Lambda (API Gateway endpoint)
     payload = {
         'text': text,
         'filename': filename
     }
 
-    # Ensure the API Gateway URL is correct here
-    api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf'  # Replace with your API Gateway endpoint
+    response = boto3.client('apigateway').test_invoke_method(
+        restApiId='ccvjmdt3th',  # Replace with your API ID
+        resourceId='/convert-pdf',  # Replace with your resource ID
+        httpMethod='POST',
+        body=json.dumps(payload)
+    )
 
-    # Use requests module to call the API Gateway endpoint
-    import requests
-    response = requests.post(api_gateway_url, json=payload)
-
-    if response.status_code == 200:
-        return response.json()  # Assuming the response is in JSON format
-    else:
-        raise Exception(f"Error calling Lambda: {response.text}")
+    return json.loads(response['body'])
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)

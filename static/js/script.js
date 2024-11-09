@@ -18,8 +18,8 @@ function uploadFile() {
     // Create a new XMLHttpRequest to send the PDF file
     const xhr = new XMLHttpRequest();
     
-    // Update this URL with your Lambda API Gateway URL
-    xhr.open('POST', 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', true);  // Replace with your API Gateway URL
+    // Update this URL with your Flask backend URL
+    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true);  // Replace with your Flask URL
 
     xhr.responseType = 'json';  // Expecting a JSON response with audio file URL
 
@@ -35,17 +35,21 @@ function uploadFile() {
         if (xhr.status === 200) {
             // Assuming the response contains a JSON object with a URL to the audio file
             const response = xhr.response;
-            const audioUrl = response.audio_url;  // Adjust based on how the Lambda function returns the audio file URL
+            if (response.success) {
+                const audioUrl = response.audio_files[0];  // Adjust based on the backend response
 
-            // Create a download link for the audio file
-            const downloadLink = document.createElement('a');
-            downloadLink.href = audioUrl;  // The S3 URL or generated URL for downloading
-            downloadLink.download = 'output.mp3';  // Default filename
-            downloadLink.innerText = 'Download your audiobook';
-            downloadLink.style.display = 'block';
+                // Create a download link for the audio file
+                const downloadLink = document.createElement('a');
+                downloadLink.href = audioUrl;  // The S3 URL or generated URL for downloading
+                downloadLink.download = 'output.mp3';  // Default filename
+                downloadLink.innerText = 'Download your audiobook';
+                downloadLink.style.display = 'block';
 
-            document.getElementById('outputMessage').innerText = 'Conversion successful!';
-            document.getElementById('outputMessage').appendChild(downloadLink);
+                document.getElementById('outputMessage').innerText = 'Conversion successful!';
+                document.getElementById('outputMessage').appendChild(downloadLink);
+            } else {
+                document.getElementById('outputMessage').innerText = 'Conversion failed. Please try again.';
+            }
         } else {
             document.getElementById('outputMessage').innerText = 'Conversion failed. Please try again.';
         }
