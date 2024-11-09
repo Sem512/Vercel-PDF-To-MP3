@@ -21,7 +21,7 @@ def upload_pdf():
     if request.method == 'OPTIONS':
         # Send CORS headers for the preflight request
         response = make_response()
-        response.headers['Access-Control-Allow-Origin'] = 'https://vercel-pdf-to-mp-3-delta.vercel.app'
+        response.headers['Access-Control-Allow-Origin'] = 'https://https://vercel-pdf-to-mp-3-delta.vercel.app'
         response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
         return response
