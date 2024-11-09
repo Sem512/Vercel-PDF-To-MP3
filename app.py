@@ -7,6 +7,9 @@ import logging
 
 app = Flask(__name__)
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 # Lambda URL for POST request
 lambda_url = "https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf"
 
