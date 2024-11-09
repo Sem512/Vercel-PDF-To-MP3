@@ -1,13 +1,13 @@
 import os
 import boto3
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 
-# Initialize the API Gateway client
-api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod'  # Replace with your API Gateway endpoint
+# Initialize the Lambda client
+lambda_client = boto3.client('lambda', region_name='eu-north-1')  # Make sure to set your region
 
 @app.route('/')
 def index():
@@ -36,8 +36,9 @@ def upload_pdf():
             response = trigger_lambda(pdf_text, pdf_file.filename)
 
             # Return the audio file URL(s)
-            if response['statusCode'] == 200:
-                return jsonify({"success": True, "audio_files": json.loads(response['body'])['audio_files']})
+            if response.get('statusCode') == 200:
+                body = json.loads(response.get('body'))
+                return jsonify({"success": True, "audio_files": body.get('audio_files', [])})
 
             return jsonify({"success": False, "message": "Error in Lambda processing"}), 500
 
@@ -60,14 +61,17 @@ def trigger_lambda(text, filename):
         'filename': filename
     }
 
-    response = boto3.client('apigateway').test_invoke_method(
-        restApiId='ccvjmdt3th',  # Replace with your API ID
-        resourceId='/convert-pdf',  # Replace with your resource ID
-        httpMethod='POST',
-        body=json.dumps(payload)
-    )
+    # Ensure the API Gateway URL is correct here
+    api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf'  # Replace with your API Gateway endpoint
 
-    return json.loads(response['body'])
+    # Use requests module to call the API Gateway endpoint
+    import requests
+    response = requests.post(api_gateway_url, json=payload)
+
+    if response.status_code == 200:
+        return response.json()  # Assuming the response is in JSON format
+    else:
+        raise Exception(f"Error calling Lambda: {response.text}")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
