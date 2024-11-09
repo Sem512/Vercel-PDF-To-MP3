@@ -13,10 +13,13 @@ function uploadFile() {
 
     // Create a new FormData object
     const formData = new FormData();
-    formData.append('pdf', pdfFile); // Append the PDF file
+    formData.append('pdf', pdfFile);
 
+    // Create a new XMLHttpRequest to send the PDF file
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true);
+    xhr.open('POST', 'https://your-vercel-app-url.vercel.app/upload', true);  // Replace with your Vercel URL
+
+    xhr.responseType = 'blob'; // Set the response type to blob to handle the audio file download
 
     xhr.upload.onprogress = function(event) {
         if (event.lengthComputable) {
@@ -28,17 +31,26 @@ function uploadFile() {
 
     xhr.onload = function() {
         if (xhr.status === 200) {
-            const response = JSON.parse(xhr.responseText);
-            if (response.success) {
-                document.getElementById('outputMessage').innerText = 'Conversion successful! Download your audiobook below.';
-                displayDownloadLink(response.audio_url);
-            } else {
-                document.getElementById('outputMessage').innerText = response.message || 'Conversion failed. Please try again.';
-            }
+            // Handle the blob response (audio file)
+            const audioBlob = xhr.response;
+            const downloadUrl = window.URL.createObjectURL(audioBlob);
+
+            // Create a download link for the audio file
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = 'output.mp3'; // Set a default filename for download
+            downloadLink.innerText = 'Download your audiobook';
+            downloadLink.style.display = 'block';
+
+            document.getElementById('outputMessage').innerText = 'Conversion successful!';
+            document.getElementById('outputMessage').appendChild(downloadLink);
+
         } else {
-            document.getElementById('outputMessage').innerText = 'Upload failed. Please try again.';
+            document.getElementById('outputMessage').innerText = 'Conversion failed. Please try again.';
         }
-        document.getElementById('progressBar').value = 0; // Reset progress bar
+        
+        // Reset progress bar
+        document.getElementById('progressBar').value = 0;
         document.getElementById('progressContainer').style.display = 'none';
     };
 
@@ -47,19 +59,6 @@ function uploadFile() {
         document.getElementById('progressContainer').style.display = 'none';
     };
 
-    // Send the FormData object
-    console.log([...formData]);
+    // Send the FormData with the PDF file
     xhr.send(formData);
-}
-
-
-function displayDownloadLink(url) {
-    const outputMessage = document.getElementById('outputMessage');
-    outputMessage.innerHTML = ''; // Clear previous messages
-    const downloadLink = document.createElement('a');
-    downloadLink.href = url;
-    downloadLink.innerText = 'Download your audiobook';
-    downloadLink.download = '';
-    outputMessage.appendChild(document.createElement('br'));
-    outputMessage.appendChild(downloadLink);
 }
