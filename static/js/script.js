@@ -1,41 +1,20 @@
-async function uploadFile() {
+function uploadFile() {
     const fileInput = document.getElementById('pdfUpload');
     const file = fileInput.files[0];
-
-    if (!file) {
-        document.getElementById('outputMessage').textContent = 'Please select a PDF file.';
-        return;
-    }
-
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('pdf', file);
 
-    // Assuming the backend API is accessible at /extract-text
-    const response = await fetch('/extract-text', {  // Adjust this endpoint as needed
+    fetch('/upload', {
         method: 'POST',
-        body: formData
-    });
-
-    if (response.ok) {
-        const { extractedText } = await response.json();
-        
-        // Now we send the text to Lambda
-        const lambdaResponse = await fetch('https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: extractedText,
-                filename: file.name.replace('.pdf', '')  // Clean filename for S3
-            })
-        });
-
-        if (lambdaResponse.ok) {
-            const result = await lambdaResponse.json();
-            document.getElementById('outputMessage').textContent = `Audio URL: ${result.audio_url}`;
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('outputMessage').innerHTML = `<a href="${data.audio_url}" download>Download Audio</a>`;
         } else {
-            document.getElementById('outputMessage').textContent = 'Error converting text to audio.';
+            document.getElementById('outputMessage').textContent = data.message;
         }
-    } else {
-        document.getElementById('outputMessage').textContent = 'Error extracting text from PDF.';
-    }
+    })
+    .catch(error => console.error('Error:', error));
 }
