@@ -1,56 +1,41 @@
-function uploadFile() {
-    const pdfFile = document.getElementById('pdfUpload').files[0];
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const outputMessage = document.getElementById('outputMessage');
+async function uploadFile() {
+    const fileInput = document.getElementById('pdfUpload');
+    const file = fileInput.files[0];
 
-    if (!pdfFile) {
-        alert("Please select a PDF file.");
+    if (!file) {
+        document.getElementById('outputMessage').textContent = 'Please select a PDF file.';
         return;
     }
 
-    // Show the progress bar
-    progressContainer.style.display = 'block';
-
     const formData = new FormData();
-    formData.append('pdf', pdfFile);
+    formData.append("file", file);
 
-    // Disable the upload button to prevent multiple submissions
-    const uploadButton = event.target;
-    uploadButton.disabled = true;
-    uploadButton.textContent = 'Uploading...';
-
-    // Send the PDF to the Flask backend
-    fetch('/upload', {
+    // Assuming the backend API is accessible at /extract-text
+    const response = await fetch('/extract-text', {  // Adjust this endpoint as needed
         method: 'POST',
         body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        uploadButton.disabled = false;
-        uploadButton.textContent = 'Upload & Convert';
-
-        // Hide progress bar after completion
-        progressContainer.style.display = 'none';
-
-        if (data.success) {
-            // Display the audio download link
-            const audioUrl = data.audio_files; // The URL returned from Lambda
-            const downloadLink = document.createElement('a');
-            downloadLink.href = audioUrl;
-            downloadLink.textContent = 'Download Audio';
-            downloadLink.download = 'converted_audio.mp3'; // Set a default name for the download
-            outputMessage.innerHTML = ''; // Clear the previous message
-            outputMessage.appendChild(downloadLink);
-        } else {
-            outputMessage.textContent = `Error: ${data.message}`;
-        }
-    })
-    .catch(error => {
-        uploadButton.disabled = false;
-        uploadButton.textContent = 'Upload & Convert';
-        progressContainer.style.display = 'none';
-        outputMessage.textContent = `An error occurred: ${error}`;
     });
+
+    if (response.ok) {
+        const { extractedText } = await response.json();
+        
+        // Now we send the text to Lambda
+        const lambdaResponse = await fetch('https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: extractedText,
+                filename: file.name.replace('.pdf', '')  // Clean filename for S3
+            })
+        });
+
+        if (lambdaResponse.ok) {
+            const result = await lambdaResponse.json();
+            document.getElementById('outputMessage').textContent = `Audio URL: ${result.audio_url}`;
+        } else {
+            document.getElementById('outputMessage').textContent = 'Error converting text to audio.';
+        }
+    } else {
+        document.getElementById('outputMessage').textContent = 'Error extracting text from PDF.';
+    }
 }
