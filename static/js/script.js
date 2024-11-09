@@ -17,7 +17,7 @@ function uploadFile() {
 
     // Create a new XMLHttpRequest to send the PDF file
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel/upload', true);  // Replace with your Vercel URL
+    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true);  // Replace with your Vercel URL
 
     xhr.responseType = 'blob'; // Set the response type to blob to handle the audio file download
 
