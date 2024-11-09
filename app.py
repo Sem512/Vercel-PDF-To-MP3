@@ -5,7 +5,6 @@ from flask import Flask, request, jsonify, render_template
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-
 # Initialize the Lambda client
 lambda_client = boto3.client('lambda', region_name='eu-north-1')  # Make sure to set your region
 
