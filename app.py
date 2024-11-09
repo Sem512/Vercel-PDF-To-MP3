@@ -28,7 +28,7 @@ def extract_text_from_pdf(pdf_path):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('indesx.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
