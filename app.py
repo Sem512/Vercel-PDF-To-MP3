@@ -1,6 +1,6 @@
 import os
 import boto3
-from flask import Flask, request, jsonify, url_for, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from PyPDF2 import PdfReader
 
@@ -65,22 +65,36 @@ def extract_text_from_pdf(pdf_path):
         print(f"PDF extraction error: {e}")  # Log the error
         raise RuntimeError("Error reading PDF: " + str(e))
 
+def split_text(text, max_length=3000):
+    """Split the text into chunks of max_length characters"""
+    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
+
 def convert_text_to_speech_with_polly(text, filename):
     try:
         if not text.strip():
             raise ValueError("Cannot convert empty text to speech.")
-
-        response = polly_client.synthesize_speech(
-            Text=text,
-            OutputFormat='mp3',
-            VoiceId='Joanna'  # Customize the voice here as needed
-        )
-
-        audio_path = os.path.join(temp_dir, f"{filename}.mp3")
-        with open(audio_path, 'wb') as file:
-            file.write(response['AudioStream'].read())
         
-        return audio_path
+        audio_files = []
+        text_chunks = split_text(text)
+
+        for i, chunk in enumerate(text_chunks):
+            response = polly_client.synthesize_speech(
+                Text=chunk,
+                OutputFormat='mp3',
+                VoiceId='Joanna'  # Customize the voice here as needed
+            )
+
+            # Create a temporary audio file for each chunk
+            audio_path = os.path.join(temp_dir, f"{filename}_{i}.mp3")
+            with open(audio_path, 'wb') as file:
+                file.write(response['AudioStream'].read())
+
+            audio_files.append(audio_path)
+
+        # If you want to combine all audio chunks into one file, you can use pydub here
+        # or you can return the first file or implement other ways to combine them.
+        return audio_files[0]  # You could also combine and return a single file
+
     except Exception as e:
         print(f"TTS conversion error: {e}")  # Log the error
         raise RuntimeError("Error converting text to speech: " + str(e))
