@@ -46,6 +46,9 @@ def upload_pdf():
         if not pdf_text.strip():
             return jsonify({"error": "No text extracted from PDF"}), 500
 
+
+        logger.info(pdf_text)
+        
         # Send the extracted text to Lambda
         payload = {
             'text': pdf_text,
