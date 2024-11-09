@@ -17,9 +17,11 @@ function uploadFile() {
 
     // Create a new XMLHttpRequest to send the PDF file
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://vercel-pdf-to-mp-3-delta.vercel.app/upload', true);  // Replace with your Vercel URL
+    
+    // Update this URL with your Lambda API Gateway URL
+    xhr.open('POST', 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', true);  // Replace with your API Gateway URL
 
-    xhr.responseType = 'blob'; // Set the response type to blob to handle the audio file download
+    xhr.responseType = 'json';  // Expecting a JSON response with audio file URL
 
     xhr.upload.onprogress = function(event) {
         if (event.lengthComputable) {
@@ -31,20 +33,19 @@ function uploadFile() {
 
     xhr.onload = function() {
         if (xhr.status === 200) {
-            // Handle the blob response (audio file)
-            const audioBlob = xhr.response;
-            const downloadUrl = window.URL.createObjectURL(audioBlob);
+            // Assuming the response contains a JSON object with a URL to the audio file
+            const response = xhr.response;
+            const audioUrl = response.audio_url;  // Adjust based on how the Lambda function returns the audio file URL
 
             // Create a download link for the audio file
             const downloadLink = document.createElement('a');
-            downloadLink.href = downloadUrl;
-            downloadLink.download = 'output.mp3'; // Set a default filename for download
+            downloadLink.href = audioUrl;  // The S3 URL or generated URL for downloading
+            downloadLink.download = 'output.mp3';  // Default filename
             downloadLink.innerText = 'Download your audiobook';
             downloadLink.style.display = 'block';
 
             document.getElementById('outputMessage').innerText = 'Conversion successful!';
             document.getElementById('outputMessage').appendChild(downloadLink);
-
         } else {
             document.getElementById('outputMessage').innerText = 'Conversion failed. Please try again.';
         }

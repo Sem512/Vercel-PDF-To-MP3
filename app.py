@@ -61,8 +61,8 @@ def trigger_lambda(text, filename):
     }
 
     response = boto3.client('apigateway').test_invoke_method(
-        restApiId='your-api-id',  # Replace with your API ID
-        resourceId='your-resource-id',  # Replace with your resource ID
+        restApiId='ccvjmdt3th',  # Replace with your API ID
+        resourceId='/convert-pdf',  # Replace with your resource ID
         httpMethod='POST',
         body=json.dumps(payload)
     )
