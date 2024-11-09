@@ -1,65 +1,56 @@
 function uploadFile() {
     const pdfFile = document.getElementById('pdfUpload').files[0];
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const outputMessage = document.getElementById('outputMessage');
 
     if (!pdfFile) {
-        document.getElementById('outputMessage').innerText = 'Please select a PDF file.';
+        alert("Please select a PDF file.");
         return;
     }
 
-    document.getElementById('outputMessage').innerText = 'Uploading...';
-    document.getElementById('progressContainer').style.display = 'block';
-    document.getElementById('progressBar').value = 0;
-    document.getElementById('progressText').innerText = '0%';
+    // Show the progress bar
+    progressContainer.style.display = 'block';
 
-    // Create a new FormData object
     const formData = new FormData();
-    formData.append('pdf', pdfFile); // Append the PDF file to the FormData object
+    formData.append('pdf', pdfFile);
 
-    // Create a new XMLHttpRequest to send the PDF file
-    const xhr = new XMLHttpRequest();
-    
-    // Update this URL with your Lambda API Gateway URL
-    xhr.open('POST', 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod/convert-pdf', true);
+    // Disable the upload button to prevent multiple submissions
+    const uploadButton = event.target;
+    uploadButton.disabled = true;
+    uploadButton.textContent = 'Uploading...';
 
-    xhr.responseType = 'json';  // Expecting a JSON response with audio file URL
+    // Send the PDF to the Flask backend
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        uploadButton.disabled = false;
+        uploadButton.textContent = 'Upload & Convert';
 
-    xhr.upload.onprogress = function(event) {
-        if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            document.getElementById('progressBar').value = percentComplete;
-            document.getElementById('progressText').innerText = percentComplete + '%';
-        }
-    };
+        // Hide progress bar after completion
+        progressContainer.style.display = 'none';
 
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            // Assuming the response contains a JSON object with a URL to the audio file
-            const response = xhr.response;
-            const audioUrl = response.audio_url;  // Adjust based on how the Lambda function returns the audio file URL
-
-            // Create a download link for the audio file
+        if (data.success) {
+            // Display the audio download link
+            const audioUrl = data.audio_files; // The URL returned from Lambda
             const downloadLink = document.createElement('a');
-            downloadLink.href = audioUrl;  // The S3 URL or generated URL for downloading
-            downloadLink.download = 'output.mp3';  // Default filename
-            downloadLink.innerText = 'Download your audiobook';
-            downloadLink.style.display = 'block';
-
-            document.getElementById('outputMessage').innerText = 'Conversion successful!';
-            document.getElementById('outputMessage').appendChild(downloadLink);
+            downloadLink.href = audioUrl;
+            downloadLink.textContent = 'Download Audio';
+            downloadLink.download = 'converted_audio.mp3'; // Set a default name for the download
+            outputMessage.innerHTML = ''; // Clear the previous message
+            outputMessage.appendChild(downloadLink);
         } else {
-            document.getElementById('outputMessage').innerText = 'Conversion failed. Please try again.';
+            outputMessage.textContent = `Error: ${data.message}`;
         }
-        
-        // Reset progress bar
-        document.getElementById('progressBar').value = 0;
-        document.getElementById('progressContainer').style.display = 'none';
-    };
-
-    xhr.onerror = function() {
-        document.getElementById('outputMessage').innerText = 'An error occurred. Please try again later.';
-        document.getElementById('progressContainer').style.display = 'none';
-    };
-
-    // Send the FormData with the PDF file
-    xhr.send(formData);
+    })
+    .catch(error => {
+        uploadButton.disabled = false;
+        uploadButton.textContent = 'Upload & Convert';
+        progressContainer.style.display = 'none';
+        outputMessage.textContent = `An error occurred: ${error}`;
+    });
 }
