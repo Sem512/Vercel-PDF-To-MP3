@@ -16,8 +16,7 @@ polly_client = boto3.client(
 )
 
 # Ensure the 'temp' directory exists
-temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
-os.makedirs(temp_dir, exist_ok=True)
+temp_dir = "/tmp"
 
 @app.route('/')
 def index():
@@ -37,22 +36,23 @@ def upload_pdf():
             temp_pdf_path = os.path.join(temp_dir, pdf_file.filename)
             pdf_file.save(temp_pdf_path)
 
+            # Process PDF and convert to speech
             pdf_text = extract_text_from_pdf(temp_pdf_path)
             if not pdf_text.strip():
                 return jsonify({"success": False, "message": "PDF extraction failed"}), 500
 
             audio_path = convert_text_to_speech_with_polly(pdf_text, pdf_file.filename)
-            os.remove(temp_pdf_path)
+            os.remove(temp_pdf_path)  # Clean up the PDF after processing
 
-            # Send back the audio file URL
-            audio_url = url_for('download_file', filename=os.path.basename(audio_path))
-            return jsonify({"success": True, "audio_url": audio_url})
+            # Send the audio file directly in the response
+            return send_file(audio_path, as_attachment=True)
 
         return jsonify({"success": False, "message": "Invalid file type"}), 400
 
     except Exception as e:
-        print(f"Error: {e}")  # Log the error
+        print(f"Error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
 
 def extract_text_from_pdf(pdf_path):
     try:
