@@ -1,26 +1,17 @@
 import os
 import boto3
-from flask import Flask, request, jsonify, render_template, send_file
-from flask_cors import CORS
+import json
+from flask import Flask, request, jsonify
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-CORS(app, origins=["https://vercel-pdf-to-mp-3-delta.vercel.app"])
 
-# Initialize the Polly client using environment variables
-polly_client = boto3.client(
-    'polly',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION')
-)
-
-# Ensure the 'temp' directory exists
-temp_dir = "/tmp"
+# Initialize the API Gateway client
+api_gateway_url = 'https://ccvjmdt3th.execute-api.eu-north-1.amazonaws.com/prod'  # Replace with your API Gateway endpoint
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return "Welcome to the PDF-to-Audio service"
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
@@ -33,26 +24,25 @@ def upload_pdf():
             return jsonify({"success": False, "message": "No selected file"}), 400
 
         if pdf_file and pdf_file.filename.endswith('.pdf'):
-            temp_pdf_path = os.path.join(temp_dir, pdf_file.filename)
+            temp_pdf_path = os.path.join('/tmp', pdf_file.filename)
             pdf_file.save(temp_pdf_path)
 
-            # Process PDF and convert to speech
+            # Process PDF to extract text
             pdf_text = extract_text_from_pdf(temp_pdf_path)
             if not pdf_text.strip():
                 return jsonify({"success": False, "message": "PDF extraction failed"}), 500
 
-            audio_path = convert_text_to_speech_with_polly(pdf_text, pdf_file.filename)
-            os.remove(temp_pdf_path)  # Clean up the PDF after processing
+            # Trigger AWS Lambda for text-to-speech conversion
+            response = trigger_lambda(pdf_text, pdf_file.filename)
 
-            # Send the audio file directly in the response
-            return send_file(audio_path, as_attachment=True)
+            # Return the audio file URL(s)
+            if response['statusCode'] == 200:
+                return jsonify({"success": True, "audio_files": json.loads(response['body'])['audio_files']})
 
-        return jsonify({"success": False, "message": "Invalid file type"}), 400
+            return jsonify({"success": False, "message": "Error in Lambda processing"}), 500
 
     except Exception as e:
-        print(f"Error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
-
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -62,50 +52,22 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text() or ""
         return text
     except Exception as e:
-        print(f"PDF extraction error: {e}")  # Log the error
         raise RuntimeError("Error reading PDF: " + str(e))
 
-def split_text(text, max_length=3000):
-    """Split the text into chunks of max_length characters"""
-    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
+def trigger_lambda(text, filename):
+    payload = {
+        'text': text,
+        'filename': filename
+    }
 
-def convert_text_to_speech_with_polly(text, filename):
-    try:
-        if not text.strip():
-            raise ValueError("Cannot convert empty text to speech.")
-        
-        audio_files = []
-        text_chunks = split_text(text)
+    response = boto3.client('apigateway').test_invoke_method(
+        restApiId='your-api-id',  # Replace with your API ID
+        resourceId='your-resource-id',  # Replace with your resource ID
+        httpMethod='POST',
+        body=json.dumps(payload)
+    )
 
-        for i, chunk in enumerate(text_chunks):
-            response = polly_client.synthesize_speech(
-                Text=chunk,
-                OutputFormat='mp3',
-                VoiceId='Joanna'  # Customize the voice here as needed
-            )
-
-            # Create a temporary audio file for each chunk
-            audio_path = os.path.join(temp_dir, f"{filename}_{i}.mp3")
-            with open(audio_path, 'wb') as file:
-                file.write(response['AudioStream'].read())
-
-            audio_files.append(audio_path)
-
-        # If you want to combine all audio chunks into one file, you can use pydub here
-        # or you can return the first file or implement other ways to combine them.
-        return audio_files[0]  # You could also combine and return a single file
-
-    except Exception as e:
-        print(f"TTS conversion error: {e}")  # Log the error
-        raise RuntimeError("Error converting text to speech: " + str(e))
-
-@app.route('/download/<filename>')
-def download_file(filename):
-    audio_path = os.path.join(temp_dir, filename)
-    if os.path.exists(audio_path):
-        return send_file(audio_path, as_attachment=True)
-    else:
-        return jsonify({"success": False, "message": "File not found"}), 404
+    return json.loads(response['body'])
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
